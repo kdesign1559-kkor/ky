@@ -1,5 +1,7 @@
 import unittest
 from app import analyze
+from unittest.mock import patch
+from app import ocr_executable
 
 class AnalysisTests(unittest.TestCase):
     def payload(self, text):
@@ -38,6 +40,11 @@ class AnalysisTests(unittest.TestCase):
         data['confirmed']=False
         with self.assertRaises(ValueError):
             analyze(data)
+
+    def test_missing_ocr_engine_is_actionable(self):
+        with patch('app.Path.is_file', return_value=False), patch('app.shutil.which', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'OCR 엔진'):
+                ocr_executable()
 
 if __name__ == '__main__':
     unittest.main()

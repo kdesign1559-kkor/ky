@@ -5,6 +5,8 @@ import io
 import json
 import math
 import subprocess
+import shutil
+import sys
 import tempfile
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,6 +18,14 @@ from scipy import stats
 
 ROOT = Path(__file__).parent
 MAX_BODY = 20 * 1024 * 1024
+
+
+def ocr_executable():
+    bundled = ROOT / 'tesseract' / 'tesseract.exe'
+    executable = str(bundled) if bundled.is_file() else shutil.which('tesseract')
+    if not executable:
+        raise ValueError('이 PC에 OCR 엔진이 없습니다. 사진을 대조해 직접 입력하거나 CSV를 가져오세요. 통계 분석은 정상 사용할 수 있습니다.')
+    return executable
 
 
 def clean(value):
@@ -146,7 +156,8 @@ class Handler(BaseHTTPRequestHandler):
                         if img.width * img.height > 30_000_000:
                             raise ValueError('이미지는 3천만 픽셀 이하여야 합니다.')
                         img.convert('RGB').save(target)
-                    run = subprocess.run(['tesseract', str(target), 'stdout', '-l', 'eng'], capture_output=True, timeout=45)
+                    run = subprocess.run([ocr_executable(), str(target), 'stdout', '-l', 'eng'], capture_output=True, timeout=45,
+                                         creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
                     if run.returncode:
                         raise ValueError('OCR 실행 실패. 사진을 확인하세요.')
                     result = dict(text=run.stdout.decode('utf-8', errors='replace'),
@@ -158,11 +169,27 @@ class Handler(BaseHTTPRequestHandler):
             self.send(400, json.dumps(dict(error=str(error)), ensure_ascii=False))
 
 
-if __name__ == '__main__':
+def main():
     import argparse
+    import threading
+    import webbrowser
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, default=8000)
+    frozen = getattr(sys, 'frozen', False)
+    parser.add_argument('--port', type=int, default=0 if frozen else 8000)
     parser.add_argument('--host', default='127.0.0.1')
+    parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args()
-    print(f'Survey GUI listening on {args.host}:{args.port}', flush=True)
-    ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()
+    with ThreadingHTTPServer((args.host, args.port), Handler) as server:
+        url = f'http://{args.host}:{server.server_port}'
+        print(f'Survey Studio: {url}', flush=True)
+        print('Keep this window open while using the app. Close it to stop.', flush=True)
+        if frozen and not args.no_browser:
+            threading.Timer(0.5, lambda: webbrowser.open(url)).start()
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+
+
+if __name__ == '__main__':
+    main()

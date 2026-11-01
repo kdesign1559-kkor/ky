@@ -1,0 +1,49 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app.py'
+      - 'web/**'
+      - 'requirements.txt'
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/windows-exe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install verified build dependencies
+        run: python -m pip install -r requirements.txt pyinstaller==6.20.0
+      - name: Test analysis
+        run: python -m unittest discover -s tests -v
+      - name: Package standalone executable
+        run: python -m PyInstaller --noconfirm --clean --onefile --console --name SurveyStudio --add-data "web;web" app.py
+      - name: Test actual Windows executable
+        run: python scripts/smoke_exe.py dist/SurveyStudio.exe
+      - name: Prepare usage notes and checksum
+        shell: pwsh
+        run: |
+          Copy-Item WINDOWS-README.txt dist/README.txt
+          (Get-FileHash dist/SurveyStudio.exe -Algorithm SHA256).Hash + '  SurveyStudio.exe' | Set-Content dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SurveyStudio-Windows-x64
+          path: |
+            dist/SurveyStudio.exe
+            dist/README.txt
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30

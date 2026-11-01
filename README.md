@@ -4,6 +4,16 @@
 
 ## 실행
 
+### Windows: Python 설치 없이 실행
+
+[Windows EXE 빌드 페이지](https://github.com/kdesign1559-kkor/ky/actions/workflows/windows-exe.yml)에서 최신 성공한 실행을 열고 **Artifacts → SurveyStudio-Windows-x64**를 다운로드하세요. GitHub 로그인이 필요하며, 빌드가 완료되어야 나타납니다.
+
+ZIP을 압축 해제한 뒤 `SurveyStudio.exe`를 더블클릭하면 브라우저가 자동으로 열립니다. 사용하는 동안 콘솔 창을 열어 두세요. 종료하려면 콘솔 창을 닫습니다. Python과 분석 라이브러리는 EXE 안에 포함됩니다. OCR 엔진 Tesseract는 포함하지 않으므로 OCR 없이 사진을 대조하여 입력하거나 CSV를 가져올 수 있습니다.
+
+EXE는 Windows x64용이며 코드 서명되지 않았습니다. 함께 제공하는 `SHA256SUMS.txt`로 파일 무결성을 확인할 수 있습니다. 빌드는 Windows에서 실제 EXE를 실행하여 화면 파일과 통계 API를 검증한 뒤에만 아티팩트를 업로드하도록 설정되어 있습니다. 빌드 실패 또는 실행 전 상태를 완료된 EXE로 취급하지 마세요.
+
+### 개발자 실행
+
 Python 3.12 권장. `/workspace/ky`에서:
 
 ```sh
